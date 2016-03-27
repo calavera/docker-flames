@@ -1,0 +1,9 @@
+: ${ACCESS_TOKEN:=$(<~/.config/docker-machine/digitalocean)}
+DOCKER_VERSION="1.11.0-rc2"
+
+TARGET="docker-flames-${DOCKER_VERSION}"
+TARGET_IMAGES=(ruby:latest)
+
+REGIONS=(ams3 nyc2)
+
+FLAMES_BOX=${TARGET}-${REGIONS[${#REGIONS[@]} - 1]}

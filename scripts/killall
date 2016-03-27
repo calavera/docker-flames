@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+set -x
+
+source scripts/globals
+
+for region in ${REGIONS}
+do
+  machine="${TARGET}-${region}"
+  eval $(docker-machine env ${machine})
+
+  docker ps -aq | xargs docker rm -f
+done

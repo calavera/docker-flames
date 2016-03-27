@@ -1,0 +1,51 @@
+#!/bin/sh
+
+set -e
+set -x
+
+source scripts/globals
+
+mkdir -p graphs
+
+function create_machine() {
+local machine=${@: -1}
+docker-machine create --driver digitalocean --digitalocean-image=ubuntu-15-10-x64 --digitalocean-access-token=$ACCESS_TOKEN --digitalocean-size=16gb $@
+eval $(docker-machine env ${machine})
+
+docker-machine ssh ${machine} systemctl stop docker
+docker-machine ssh ${machine} wget https://test.docker.com/builds/Linux/x86_64/docker-${DOCKER_VERSION}.tgz
+docker-machine ssh ${machine} tar -x -C /usr/bin -f docker-${DOCKER_VERSION}.tgz --strip-components 3
+}
+
+# Configure the target host. It needs to be insecure because
+# go tool pprof doesn't support TLS connections. See:
+# https://go-review.googlesource.com/#/c/20885/
+#
+
+create_machine ${TARGET}
+
+# Pull images
+#
+docker-machine ssh ${TARGET} systemctl start docker
+sleep 1 # wait a sec, docker might be starting
+docker pull ${TARGET_IMAGES[@]}
+
+# Remove TLS from target
+#
+docker-machine scp insecure-docker.service ${TARGET}:/etc/systemd/system/docker.service
+docker-machine ssh ${TARGET} systemctl daemon-reload
+docker-machine ssh ${TARGET} systemctl restart docker
+
+# Configure the client in several regions
+#
+for region in ${REGIONS[@]}
+do
+  client="${TARGET}-${region}"
+  create_machine --digitalocean-region=${region} ${client}
+  docker-machine ssh ${client} systemctl start docker
+
+  sleep 1 # wait a sec, docker might be starting
+  docker pull calavera/docker-flames
+done
+
+docker pull calavera/go-torch

@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -e
+set -x
+
+source scripts/globals
+
+GRAPH_NAME="start-ps-stop-torch.svg"
+TARGET_IP=`docker-machine ip ${TARGET}`
+
+# Start pprof and save graph location
+#
+eval $(docker-machine env ${FLAMES_BOX})
+
+docker volume create --name flame-graphs
+GRAPH=`docker volume inspect --format '{{.Mountpoint}}' flame-graphs`/${GRAPH_NAME}
+docker run -d -v flame-graphs:/graphs calavera/go-torch --url http://${TARGET_IP}:2376 --time 90 --file "/graphs/${GRAPH_NAME}"
+
+# Start exerciser in every region
+#
+for region in ${REGIONS[@]}
+do
+  machine="${TARGET}-${region}"
+  eval $(docker-machine env ${machine})
+
+  docker run -d calavera/docker-flames start-ps-stop tcp://${TARGET_IP}:2376
+done
+
+sleep 95
+
+docker-machine scp ${FLAMES_BOX}:${GRAPH} graphs

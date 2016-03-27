@@ -1,0 +1,10 @@
+[Service]
+ExecStart=/usr/bin/docker daemon -D -H tcp://0.0.0.0:2376 -H unix:///var/run/docker.sock --storage-driver aufs --label provider=digitalocean
+MountFlags=slave
+LimitNOFILE=1048576
+LimitNPROC=1048576
+LimitCORE=infinity
+Environment=
+
+[Install]
+WantedBy=multi-user.target
